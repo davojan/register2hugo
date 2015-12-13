@@ -19,7 +19,7 @@ proc parseEntry*(entry: string): EntryInfo =
     entry.parseTag("time"),
     entry.parseTag("subj").get.cleanUpTitle,
     entry.parseTag("text"),
-    entry.parseTag("keywords").get("").split(","),
+    entry.parseTag("keywords").get("").split(", "),
     entry.parseTag("posts").get("0").parseInt
   )
 

@@ -7,13 +7,8 @@ import register.parser
 import register.translit
 import hugo.mdcontent
 
-proc html2md(html: string): string =
-  return html
-    .replace("<br>", "\n\n")
-
-# echo($ord(' '))
-
-let contentDir = "../davojan.ru/register/txt"
+const contentDir = "../davojan.ru/register/txt"
+const sectionDir = "../davojan.ru/content/blog"
 
 let pattern = re"\d\d\.\d\d\.\d\d\d\d\.txt"
 
@@ -21,44 +16,30 @@ echo("Scanning register content directory")
 
 for kind, path in walkDir(contentDir):
   let fileName = path.extractFilename
-  # echo(kind, ", ", fileName)
 
   if fileName.match(pattern).isSome:
     let parts = fileName.split('.')
     let date = "$#-$#-$#".format(parts[2], parts[1], parts[0])
+    let year = parts[2]
 
     let fileContents = readFile(path)
-    # echo fileContents
     let entries = fileContents.split("<entry>")
 
     for entry in entries:
-      if entry != "":
+      if entry != "": # ignore first
         let entryInfo = parseEntry(entry)
+        let slug = translitTitle(entryInfo.subject)
 
-        let keyworldsStr =
-          if entryInfo.keywords.len > 0:
-            "categories = [\"$1\"]".format(entryInfo.keywords.join("\", \""))
-          else:
-            ""
-        echo """
-+++
-date = "$1T$2+03:00"
-title = "$3"
-slug = $4
-$5
-+++
-
-$6
-"""     .format(
-          date,
-          entryInfo.time.get("12:00"),
+        let hugoContent = createHugoContent(
           entryInfo.subject,
-          translitTitle(entryInfo.subject),
-          keyworldsStr,
-          entryInfo.text.get("").html2md
+          entryInfo.text.get(""),
+          date, entryInfo.time.get("12:00"),
+          slug,
+          entryInfo.keywords
         )
 
-
-
-
-    # break
+        saveHugoContentFile(
+          hugoContent,
+          sectionDir,
+          date, year, slug
+        )
