@@ -1,10 +1,65 @@
-import strutils
+import strutils, nre, options
 from os import `/`, createDir
+
+
+proc fixBlockquotes(html: string): string =
+  ## replaces html blockquote formatting with markdown formatting
+  let pattern = "(*CRLF)(?m)(?U)<blockquote>(.+)</blockquote>".re
+  let matches = html.findAll(pattern)
+  result = html
+  for quoteContent in matches:
+    let fixed = quoteContent
+      .replace("\n", "\n> ")
+      .replace("<blockquote>", "\n\n> ")
+      .replace("</blockquote>", "\n\n")
+    result = result.replace(quoteContent, fixed)
+
+
+proc cleanHtml(html: string): string =
+  ## Removes some html tags and replaces &nbsp; with regular space
+  html
+    .replace("&nbsp;", " ")
+    .replace("<b>", "").replace("</b>", "")
+    .replace("<i>", "").replace("</i>", "")
+    .replace("<tt>", "").replace("</tt>", "")
+    .replace("<p>", "").replace("</p>", "")
+
+
+proc fixCodeBlocks(html: string): string =
+  ## replaces multiline code blocks with hugo formatted version
+  let pattern = "(*CRLF)(?m)(?U)\n<code>(.+)</code>(\n|,)".re
+  let matches = html.findAll(pattern)
+  result = html
+  for codeContent in matches:
+    let cleaned = codeContent
+      .cleanHtml
+      .replace("\n\n", "\n")
+      .replace("\n<code>", "\n{{< highlight c \"linenos=1\" >}}\n")
+      .replace("</code>\n", "\n{{< /highlight >}}\n")
+      .replace("</code>,", "\n{{< /highlight >}}\n")
+    result = result.replace(codeContent, cleaned)
+
+
+proc fixCodeInlines(html: string): string =
+  ## replaces inline code blocks with hugo formatted version
+  let pattern = "(?U)<code>(.+)</code>".re
+  let matches = html.findAll(pattern)
+  result = html
+  for codeContent in matches:
+    let cleaned = codeContent
+      .cleanHtml
+        .replace("<code>", "``")
+      .replace("</code>", "``")
+    result = result.replace(codeContent, cleaned)
+
 
 proc html2md(html: string): string =
   return html
     .replace("<br>", "\n\n")
     .replace("<cut>", "<!--more-->")
+    .fixBlockquotes
+    .fixCodeBlocks
+    .fixCodeInlines
 
 
 const hugoContentTemplate = """
